@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" id="themeColor" content="#f1f5f9">
+<title>Timebox</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script>
+  // ตั้งธีมก่อนวาดหน้า ไม่ให้จอกะพริบ · ยังไม่เคยเลือก = ตามมือถือ
+  try { const t = localStorage.getItem('timebox-mobile-theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) { /* ignore */ }
+</script>
+<style>
+:root {
+  --bg: #f1f5f9; --panel: #ffffff; --text: #0f172a; --t2: #334155; --t3: #5b6b80; --border: #cbd5e1;
+  --accent: #2563eb; --now: #dc2626; --warn-bg: #fef3c7; --warn: #92400e;
+  --project: #1d4ed8; --task: #c2410c; --habit: #047857; --fixed: #475569; --buffer: #64748b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1117; --panel: #181c24; --text: #f8fafc; --t2: #d5dde8; --t3: #a3b0c2; --border: #2e3646;
+    --accent: #3b82f6; --now: #f87171; --warn-bg: #422006; --warn: #fde68a;
+    --project: #3b82f6; --task: #d97706; --habit: #10b981; --fixed: #94a3b8; --buffer: #64748b;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1117; --panel: #181c24; --text: #f8fafc; --t2: #d5dde8; --t3: #a3b0c2; --border: #2e3646;
+  --accent: #3b82f6; --now: #f87171; --warn-bg: #422006; --warn: #fde68a;
+  --project: #3b82f6; --task: #d97706; --habit: #10b981; --fixed: #94a3b8; --buffer: #64748b;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.5 system-ui, -apple-system, "Segoe UI", "Noto Sans Thai", sans-serif; -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
+header { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: calc(8px + env(safe-area-inset-top)) 16px 6px; }
+.card { position: relative; background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 10px 56px 10px 14px; }
+.now-label { font-size: 14px; color: var(--t3); }
+.now-title { font-size: 22px; line-height: 1.3; font-weight: 700; overflow-wrap: anywhere; }
+.now-left { font-size: 16px; color: var(--t2); }
+.next { margin: 6px -42px 0 0; padding-top: 6px; border-top: 1px solid var(--border); font-size: 15px; color: var(--t2); overflow-wrap: anywhere; }
+.next b { font-weight: 600; color: var(--text); }
+.theme { position: absolute; top: 6px; right: 6px; width: 44px; height: 44px; border: 0; border-radius: 10px; background: transparent; color: var(--t2); font-size: 22px; padding: 0; }
+.days { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 2px; scrollbar-width: none; }
+.days::-webkit-scrollbar { display: none; }
+.day { flex: 0 0 46px; height: 54px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); color: var(--t2); font: inherit; font-size: 13px; line-height: 1.25; padding: 0; }
+.day b { display: block; font-size: 18px; color: var(--text); }
+.day.today b { color: var(--accent); }
+.day.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.day.on b { color: #fff; }
+.day:disabled { opacity: .4; }
+main { padding: 6px 16px calc(24px + env(safe-area-inset-bottom)); }
+.day-title { font-size: 18px; font-weight: 700; margin: 2px 0 14px; }
+.day-title span { font-size: 15px; font-weight: 400; color: var(--t3); }
+.notice { background: var(--warn-bg); color: var(--warn); border-radius: 10px; padding: 8px 12px; font-size: 15px; margin-bottom: 10px; }
+.line { position: relative; margin-left: 52px; }
+.hour { position: absolute; left: -52px; width: 44px; font-size: 13px; color: var(--t3); text-align: right; transform: translateY(-50%); }
+.tick { position: absolute; left: 0; right: 0; border-top: 1px solid var(--border); opacity: .6; }
+.block { position: absolute; left: 0; right: 0; overflow: hidden; background: var(--panel); background: color-mix(in srgb, var(--c) 13%, var(--panel)); border: 1px solid color-mix(in srgb, var(--c) 35%, var(--border)); border-left: 5px solid var(--c); border-radius: 8px; padding: 5px 10px; }
+.block .t { font-size: 16px; line-height: 1.35; font-weight: 600; overflow-wrap: anywhere; }
+.block .h { font-size: 14px; line-height: 1.35; color: var(--t2); white-space: nowrap; }
+.block.short { display: flex; align-items: center; gap: 8px; padding-top: 0; padding-bottom: 0; }
+.block.short .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.block.past { opacity: .65; }
+.block.current { border-color: var(--c); border-width: 2px 2px 2px 5px; }
+.project { --c: var(--project); } .task { --c: var(--task); } .habit { --c: var(--habit); } .fixed { --c: var(--fixed); } .buffer { --c: var(--buffer); }
+.nowline { position: absolute; left: -6px; right: 0; border-top: 2px solid var(--now); z-index: 3; }
+.nowline::before { content: ""; position: absolute; left: -4px; top: -6px; width: 10px; height: 10px; border-radius: 50%; background: var(--now); }
+.empty { text-align: center; color: var(--t3); padding: 48px 0; }
+footer { text-align: center; font-size: 13px; color: var(--t3); padding-top: 16px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="card">
+    <button class="theme" id="theme" type="button"></button>
+    <div id="now"></div>
+  </div>
+  <nav class="days" id="days" aria-label="เลือกวัน"></nav>
+</header>
+<main>
+  <div id="notice"></div>
+  <div class="day-title" id="dayTitle"></div>
+  <div class="line" id="line"></div>
+  <footer id="foot"></footer>
+</main>
+<script>
+const PX_PER_MIN = 1.4;
+const FULL_BLOCK_H = 56; // เตี้ยกว่านี้ = ชื่อกับเวลาอยู่บรรทัดเดียว
+const STALE_MS = 24 * 3600 * 1000;
+const THEME_KEY = 'timebox-mobile-theme';
+const DOW = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+const DOW_FULL = ['วันอาทิตย์', 'วันจันทร์', 'วันอังคาร', 'วันพุธ', 'วันพฤหัสบดี', 'วันศุกร์', 'วันเสาร์'];
+const MONTHS = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+const $ = (id) => document.getElementById(id);
+const pad = (n) => String(n).padStart(2, '0');
+const fmtDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+let DATA = null;
+let selected = null;
+let lastToday = fmtDate(new Date());
+
+const toMin = (hhmm) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; };
+const parseDate = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const nowMin = (d) => d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60;
+
+function duration(min) {
+  const m = Math.ceil(min);
+  if (m < 60) return `${m} นาที`;
+  return `${Math.floor(m / 60)} ชม.${m % 60 ? ` ${m % 60} นาที` : ''}`;
+}
+const blocksOf = (date) => DATA.blocks.filter((b) => b.date === date);
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+// ---------- ธีม ----------
+function isDark() {
+  const t = document.documentElement.dataset.theme;
+  return t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+}
+function paintTheme() {
+  const dark = isDark();
+  $('theme').textContent = dark ? '☀️' : '🌙';
+  $('theme').setAttribute('aria-label', dark ? 'เปลี่ยนเป็นธีมสว่าง' : 'เปลี่ยนเป็นธีมมืด');
+  $('themeColor').content = dark ? '#0f1117' : '#f1f5f9';
+}
+$('theme').onclick = () => {
+  const t = isDark() ? 'light' : 'dark';
+  document.documentElement.dataset.theme = t;
+  try { localStorage.setItem(THEME_KEY, t); } catch (e) { /* ignore */ }
+  paintTheme();
+};
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', paintTheme);
+paintTheme();
+
+// ---------- หน้าจอ ----------
+function renderNow(now) {
+  const box = $('now');
+  box.replaceChildren();
+  const today = fmtDate(now);
+  const m = nowMin(now);
+  const list = DATA ? blocksOf(today) : [];
+  const cur = list.find((b) => toMin(b.start) <= m && m < toMin(b.end));
+  const next = list.find((b) => toMin(b.start) > m);
+  box.append(el('div', 'now-label', `ตอนนี้ ${pad(now.getHours())}:${pad(now.getMinutes())} น.`));
+  if (cur) {
+    box.append(el('div', 'now-title', cur.title));
+    box.append(el('div', 'now-left', `เหลือ ${duration(toMin(cur.end) - m)} · ถึง ${cur.end}`));
+  } else {
+    box.append(el('div', 'now-title', list.length ? 'ไม่มีตารางตอนนี้' : 'วันนี้ไม่มีตาราง'));
+  }
+  if (next) {
+    const row = el('div', 'next', `ถัดไป ${next.start} · `);
+    row.append(el('b', '', next.title), document.createTextNode(` · อีก ${duration(toMin(next.start) - m)}`));
+    box.append(row);
+  }
+}
+
+function renderDays(now) {
+  const box = $('days');
+  box.replaceChildren();
+  const today = fmtDate(now);
+  const start = parseDate(DATA.from);
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+    const key = fmtDate(d);
+    const b = el('button', 'day' + (key === today ? ' today' : '') + (key === selected ? ' on' : ''));
+    b.type = 'button';
+    b.append(document.createTextNode(DOW[d.getDay()]), el('b', '', String(d.getDate())));
+    b.disabled = !blocksOf(key).length;
+    b.onclick = () => { selected = key; renderAll(key === fmtDate(new Date())); if (key !== fmtDate(new Date())) window.scrollTo(0, 0); };
+    box.append(b);
+    if (key === selected) requestAnimationFrame(() => b.scrollIntoView({ inline: 'center', block: 'nearest' }));
+  }
+}
+
+function renderDayTitle(now) {
+  const d = parseDate(selected);
+  const box = $('dayTitle');
+  box.textContent = `${DOW_FULL[d.getDay()]}ที่ ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+  if (selected === fmtDate(now)) box.append(el('span', '', ' · วันนี้'));
+}
+
+function renderLine(now) {
+  const box = $('line');
+  box.replaceChildren();
+  const list = blocksOf(selected);
+  if (!list.length) { box.style.height = 'auto'; box.append(el('div', 'empty', 'วันนี้ไม่มีตาราง')); return; }
+  const from = Math.floor(toMin(list[0].start) / 60) * 60;
+  const to = Math.ceil(Math.max(...list.map((b) => toMin(b.end))) / 60) * 60;
+  const y = (min) => (min - from) * PX_PER_MIN;
+  box.style.height = `${y(to)}px`;
+  for (let h = from; h <= to; h += 60) {
+    const tick = el('div', 'tick');
+    tick.style.top = `${y(h)}px`;
+    const label = el('div', 'hour', `${pad(h / 60)}:00`);
+    label.style.top = `${y(h)}px`;
+    box.append(tick, label);
+  }
+  const isToday = selected === fmtDate(now);
+  const isPastDay = selected < fmtDate(now);
+  const m = nowMin(now);
+  for (const b of list) {
+    const s = toMin(b.start), e = toMin(b.end);
+    const past = isPastDay || (isToday && e <= m);
+    const current = isToday && s <= m && m < e;
+    const height = y(e) - y(s) - 2;
+    const node = el('div', `block ${b.kind}${past ? ' past' : ''}${current ? ' current' : ''}${height < FULL_BLOCK_H ? ' short' : ''}`);
+    node.style.top = `${y(s) + 1}px`;
+    node.style.height = `${height}px`;
+    node.append(el('div', 't', (b.done ? '✓ ' : '') + b.title), el('div', 'h', `${b.start}–${b.end}`));
+    box.append(node);
+  }
+  if (isToday && m >= from && m <= to) {
+    const line = el('div', 'nowline');
+    line.id = 'nowline';
+    line.style.top = `${y(m)}px`;
+    box.append(line);
+  }
+}
+
+function renderMeta(now) {
+  const updated = new Date(DATA.updatedAt);
+  const stale = now - updated > STALE_MS;
+  $('notice').replaceChildren();
+  if (!blocksOf(fmtDate(now)).length && fmtDate(now) > DATA.blocks.at(-1)?.date) {
+    $('notice').append(el('div', 'notice', 'ตารางในมือถือหมดแล้ว สั่ง AI ให้อัปเดตมือถือ'));
+  } else if (stale) {
+    $('notice').append(el('div', 'notice', 'ข้อมูลเก่ากว่า 1 วัน ตารางอาจไม่ตรงกับในคอม'));
+  }
+  $('foot').textContent = `อัปเดตล่าสุด ${updated.getDate()}/${updated.getMonth() + 1} ${pad(updated.getHours())}:${pad(updated.getMinutes())} น.`;
+}
+
+function scrollToNow() {
+  const line = $('nowline');
+  if (!line) return;
+  const top = line.getBoundingClientRect().top + window.scrollY - document.querySelector('header').offsetHeight - 80;
+  window.scrollTo(0, Math.max(0, top));
+}
+
+function renderAll(jump) {
+  const now = new Date();
+  renderNow(now);
+  renderDays(now);
+  renderDayTitle(now);
+  renderLine(now);
+  renderMeta(now);
+  if (jump) requestAnimationFrame(scrollToNow);
+}
+
+// เส้นเวลาเดินจากนาฬิกาในเครื่อง ไม่ต้องโหลดข้อมูลใหม่
+function tick() {
+  if (!DATA) return;
+  const now = new Date();
+  if (fmtDate(now) !== lastToday) { lastToday = selected = fmtDate(now); renderAll(true); return; } // ขึ้นวันใหม่
+  renderNow(now);
+  renderLine(now);
+}
+
+async function load(jump) {
+  try {
+    const res = await fetch('data.json', { cache: 'no-store' });
+    if (!res.ok) throw new Error(res.status);
+    DATA = await res.json();
+    selected = selected || fmtDate(new Date());
+    renderAll(jump);
+  } catch (e) {
+    if (!DATA) $('now').textContent = 'โหลดตารางไม่ได้ ลองเปิดใหม่อีกครั้ง';
+  }
+}
+
+load(true);
+setInterval(tick, 15000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) load(true); });
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
